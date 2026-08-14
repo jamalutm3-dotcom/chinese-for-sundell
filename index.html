@@ -155,10 +155,12 @@ function gquestion(){
     html=`<div class="center"><div class="tag">SENTENCE UNDERSTANDING</div><p class="zh" style="font-size:24px">${ex.sentence}</p><p>${prompt}</p></div>`+
       sentenceOpts.map(o=>`<button class="gameq ${a.selected===o?'selected':''} ${a.confirmed&&o===ex.meaning?'good':''} ${a.confirmed&&a.selected===o&&o!==ex.meaning?'bad':''}" ${a.confirmed?'disabled':''} onclick='gselect(this,${JSON.stringify(o)})'>${o}</button>`).join('');
   }else if(q.type===4){
-    // Beginner pronunciation support only. Pinyin/Malay sound is deliberately kept as a learning aid.
-    prompt='Which Malay-style pronunciation belongs to this Chinese word?';
-    html=`<div class="center"><div class="tag">PRONUNCIATION CHECK</div><div class="big">${x.zh}</div><p>🇲🇾 ${prompt}</p></div>`+
-      opts.map(o=>`<button class="gameq ${a.selected===(o.my||o.py)?'selected':''} ${a.confirmed&&(o.my||o.py)===(x.my||x.py)?'good':''} ${a.confirmed&&a.selected===(o.my||o.py)&&(o.my||o.py)!==(x.my||x.py)?'bad':''}" ${a.confirmed?'disabled':''} onclick='gselect(this,${JSON.stringify(o.my||o.py)})'>🇲🇾 ${o.my||o.py}</button>`).join('');
+    // Sentence fill-in: Chinese character recall from context. No Pinyin or Malay clues in the question/answers.
+    let ex=gexample(GQ.track,x);
+    let blanked=ex.sentence.replace(x.zh,'___');
+    prompt='Which Chinese word correctly completes the sentence?';
+    html=`<div class="center"><div class="tag">SENTENCE FILL</div><p class="zh" style="font-size:24px">${blanked}</p><p>${prompt}</p></div>`+
+      opts.map(o=>`<button class="gameq ${a.selected===o.zh?'selected':''} ${a.confirmed&&o.zh===x.zh?'good':''} ${a.confirmed&&a.selected===o.zh&&o.zh!==x.zh?'bad':''}" ${a.confirmed?'disabled':''} onclick='gselect(this,${JSON.stringify(o.zh)})'><span class="big" style="font-size:28px">${o.zh}</span></button>`).join('');
   }else{
     // Listening -> Chinese recognition. No English/Pinyin clues in the answer choices.
     prompt='Listen carefully. Which Chinese word did you hear?';
@@ -181,7 +183,7 @@ function gconfirm(){
   let a=GQ.answers[GQ.i]||{}; if(a.selected===undefined||a.confirmed)return;
   let q=GQ.qs[GQ.i],x=q.x,correct;
   if(q.type===0) correct=x.en;
-  else if(q.type===1||q.type===2||q.type===5) correct=x.zh;
+  else if(q.type===1||q.type===2||q.type===4||q.type===5) correct=x.zh;
   else if(q.type===3) correct=gexample(GQ.track,x).meaning;
   else correct=x.my||x.py;
   a.correct=a.selected===correct; a.confirmed=true; GQ.answers[GQ.i]=a; gquestion();
@@ -194,7 +196,7 @@ function gfinish(){
   GS[t].mistakes.push({date:new Date().toISOString(),level:GS[t].level,score}); gsave();
   app.innerHTML=`<div class="card center"><div class="reward">${pass?'🏆':'💪'}</div><div class="xpbig">${score}/10</div><h2>${pass?'Level Cleared! 🔓':'Keep Training'}</h2><p>${pass?'Excellent. You proved you can recognize the words from different directions. The next 10 items are unlocked.':'You need 8/10 to unlock the next level. Review the same 10 words, then test your understanding again.'}</p><p>⚡ <b>+${score*10} XP</b></p><button class="btn primary" onclick="ggame('${t}')">🎮 Test Again</button> <button class="btn" onclick="gstudy('${t}')">📚 Review These 10</button>${pass?` <button class="btn" onclick="study()">➡️ Continue Learning</button>`:''}</div>`;
 }
-function games(){app.innerHTML=`<div class="card hero"><span class="tag">ADDITIONAL GAME TRACK</span><h2>🎮 Games — Test Your Understanding</h2><p>This is not just listening. Every round tests <b>meaning, word matching, context, pronunciation and listening comprehension</b>.</p></div><div class="gamegrid">${['h','s'].map(t=>`<div class="card"><span class="tag">${t==='h'?'🎯 HSK 1':'🏭 SUNDELL'}</span><h2>${gname(t)} Game</h2><p>Current level: <b>${GS[t].level+1}/${gchunks(t)}</b></p><p>⚡ ${GS[t].xp} XP</p><div class="gamebar"><div class="gamefill" style="width:${Math.min(100,GS[t].level/gchunks(t)*100)}%"></div></div><br><button class="btn primary" onclick="ggame('${t}')">🎮 Start Test Game</button></div>`).join('')}</div><div class="card"><h3>🏆 How to unlock</h3><p><b>8/10 or higher</b> unlocks the next level.</p><p>Questions deliberately come from different directions:</p><ul><li>Chinese → meaning</li><li>Meaning → Chinese</li><li>Context → correct word</li><li>Sentence → understand the key word</li><li>Chinese → Malay pronunciation</li><li>🔊 Audio → meaning</li></ul><p class="muted">The goal is to make your brain retrieve the word, not simply recognize the sound.</p></div>`}
+function games(){app.innerHTML=`<div class="card hero"><span class="tag">ADDITIONAL GAME TRACK</span><h2>🎮 Games — Test Your Understanding</h2><p>This is not just listening. Every round tests <b>meaning, word matching, context, sentence understanding, character recall and listening comprehension</b>.</p></div><div class="gamegrid">${['h','s'].map(t=>`<div class="card"><span class="tag">${t==='h'?'🎯 HSK 1':'🏭 SUNDELL'}</span><h2>${gname(t)} Game</h2><p>Current level: <b>${GS[t].level+1}/${gchunks(t)}</b></p><p>⚡ ${GS[t].xp} XP</p><div class="gamebar"><div class="gamefill" style="width:${Math.min(100,GS[t].level/gchunks(t)*100)}%"></div></div><br><button class="btn primary" onclick="ggame('${t}')">🎮 Start Test Game</button></div>`).join('')}</div><div class="card"><h3>🏆 How to unlock</h3><p><b>8/10 or higher</b> unlocks the next level.</p><p>Questions deliberately come from different directions:</p><ul><li>Chinese → meaning</li><li>Meaning → Chinese</li><li>Context → correct word</li><li>Sentence → understand the meaning</li><li>Sentence fill → recall the correct Chinese word</li><li>🔊 Audio → Chinese recognition</li></ul><p class="muted">The goal is to make your brain retrieve the word, not simply recognize the sound.</p></div>`}
 function progress(){let x=S.mocks.at(-1);app.innerHTML=`<div class="card"><h2>📊 Progress</h2><p>HSK vocabulary: ${Object.keys(S.master).length}/150</p><p>Listening section tests: ${S.mini.l.length} · Reading: ${S.mini.r.length}</p><p>Latest mock: ${x?x.score+"/200":"not completed"}</p></div>`}
 render();
 </script></body></html>
